@@ -169,7 +169,7 @@ class Game:
                                 self.handle_command(action)
                                 
                                 # ✨ Set action animation
-                                if action in ['dance', 'sit', 'sing']:
+                                if action in ['dance', 'sit', 'sing', 'feed', 'play']:
                                     current_action = action
                                     action_timer = time.time() + 2.0  # 2 seconds
                                     frame_index = 0  # Reset to start of animation

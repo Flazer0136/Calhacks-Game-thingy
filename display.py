@@ -1,6 +1,7 @@
 import time
 import random
-from rich.console import Console, Group  # <--- Added Group import
+import re
+from rich.console import Console, Group
 from rich.panel import Panel
 from rich.layout import Layout
 from rich.text import Text
@@ -34,20 +35,34 @@ def load_sprite_frames(filename):
     Returns list of frames.
     """
     try:
-        with open(f"pet_sprites/{filename}", 'r', encoding='utf-8') as f:
-            content = f.read()
+        path = f"pet_sprites/{filename}"
         
-        # Split by double newlines (frame separator)
-        frames = content.split('\n\n\n\n\n\n')  # Your files use 6 newlines
+        # Try opening with utf-8, fallback to system default if it fails
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except UnicodeDecodeError:
+            with open(path, 'r') as f:
+                content = f.read()
         
-        # Clean up frames (remove extra whitespace)
-        frames = [frame.strip() for frame in frames if frame.strip()]
+        # ✨ STRATEGY 1: Check for explicit "===" separator (The most reliable method)
+        if "===" in content:
+            frames = content.split("===")
         
-        # If only one frame, return it as single-item list
-        return frames if frames else [content]
-    except:
-        # Fallback if file doesn't exist
+        # ✨ STRATEGY 2: Fallback to blank lines (3 or more newlines)
+        else:
+            frames = re.split(r'\n{3,}', content)
+            
+        # Clean up frames (remove extra whitespace around them)
+        frames = [frame.strip('\n') for frame in frames if frame.strip()]
+        
+        # Fallback for empty files
+        return frames if frames else ["???"]
+        
+    except FileNotFoundError:
         return ["???"]
+    except Exception as e:
+        return [f"Error: {str(e)}"]
 
 
 PET_SPRITES = {
@@ -57,11 +72,11 @@ PET_SPRITES = {
     "fear": load_sprite_frames("fear.txt"),
     "anger": load_sprite_frames("anger.txt"),
     "regular": load_sprite_frames("regular.txt"),
-    "dance": load_sprite_frames("Dance.txt"),
+    "dance": load_sprite_frames("dance.txt"),
     "sit": load_sprite_frames("sit.txt"),
 
     "sing": load_sprite_frames("happy.txt"), 
-    "feed": load_sprite_frames("normal.txt"),  
+    "feed": load_sprite_frames("happy.txt"),  
     "play": load_sprite_frames("happy.txt"),
 }
 
@@ -85,7 +100,9 @@ def get_pet_art(pet, frame_index=0, current_action=None):
     
     # If performing an action, show action sprite (NEVER corrupted)
     if current_action:
-        frames = PET_SPRITES.get(current_action, PET_SPRITES.get("normal", ["???"]))
+        action_key = current_action.lower()
+        frames = PET_SPRITES.get(action_key, PET_SPRITES.get("normal"))
+        if not frames: frames = ["???"]
         frame = frames[frame_index % len(frames)]
         return frame  # ✨ Return uncorrupted action sprite
     
@@ -93,10 +110,16 @@ def get_pet_art(pet, frame_index=0, current_action=None):
     bond = pet.pet_memory["bond_level"]
     corruption = pet.player_memory["file_corruption"]
     
-    if corruption > 80:
+    try:
+        bond = int(bond)
+        corruption = int(corruption)
+    except ValueError:
+        return ["ERROR: Stats are not numbers"]
+
+    if corruption > 50 & corruption < 80:
         frames = PET_SPRITES.get("fear", ["???"])
-    elif corruption > 50:
-        frames = PET_SPRITES.get("sadness", ["???"])
+    elif corruption < 50:
+        frames = PET_SPRITES.get("angry", ["???"])
     elif bond > 70:
         frames = PET_SPRITES.get("happy", ["???"])
     elif bond > 40:
@@ -104,6 +127,7 @@ def get_pet_art(pet, frame_index=0, current_action=None):
     else:
         frames = PET_SPRITES.get("sadness", ["???"])
     
+    if not frames: frames = ["???"]
     # Get current frame
     frame = frames[frame_index % len(frames)]
     
@@ -119,6 +143,7 @@ def create_stats_panel(pet):
     stats_grid.add_column(justify="left")
     
     def create_bar_text(emoji, label, value, color):
+        value = max(0, min(100, value))
         blocks_filled = int(value / 10)
         blocks_empty = 10 - blocks_filled
         
