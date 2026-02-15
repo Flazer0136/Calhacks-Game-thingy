@@ -34,19 +34,22 @@ class Game:
             owner_name = self.get_owner_name()
             self.pet = load_pet(owner_name=owner_name)  
             
+        # Show "away" message and check commits
         hours_away = calculate_decay_since_last_save()
-        
-        if hours_away > 0.1:  
-            console.print(f"\n[{COLORS['warning']}]⏰ You've been away for {hours_away:.1f} hours...[/]")
+
+        if save_exists:  
+            if hours_away > 0.1:
+                console.print(f"\n[{COLORS['warning']}]⏰ You've been away for {hours_away:.1f} hours...[/]")
             
             hours_no_commit = hours_since_last_commit()
             
             if hours_no_commit > hours_away:
-                display_message(
-                    f"💔 No commits for {hours_no_commit:.1f} hours! Pet's memory is fading...",
-                    COLORS['danger']
-                )
-                self.pet.decay_memory(hours_passed=hours_away)
+                if hours_away > 0.1: 
+                    display_message(
+                        f"💔 No commits for {hours_no_commit:.1f} hours! Pet's memory is fading...",
+                        COLORS['danger']
+                    )
+                    self.pet.decay_memory(hours_passed=hours_away)
             else:
                 display_message(
                     f"✅ You made commits! Pet remembers you better!",
@@ -54,10 +57,13 @@ class Game:
                 )
                 self.pet.pet_memory['name_clarity'] = min(100, self.pet.pet_memory['name_clarity'] + 10)
                 self.pet.pet_memory['bond_level'] = min(100, self.pet.pet_memory['bond_level'] + 5)
+                self.pet.player_memory['file_corruption'] = max(0, self.pet.player_memory['file_corruption'] - 10)
             
-            time.sleep(2)
-        
+            if hours_away > 0.1:  
+                console.input(f"\n[dim]Press Enter to continue...[/]")
+            
         self.running = True
+
     
     def get_owner_name(self):
         """Get player's name at start"""
