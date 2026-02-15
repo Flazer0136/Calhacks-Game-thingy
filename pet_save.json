@@ -1,16 +1,12 @@
 {
-  "pet_name": "Buddy",
-  "creation_time": 1771134440.288357,
+  "pet_name": "Dev",
+  "creation_time": 1771181300.880417,
   "pet_memory": {
     "owner_name": "Avi",
-    "name_clarity": 51.40124791396989,
-    "bond_level": 98.04074874838193,
-    "learned_tricks": [
-      "dance",
-      "sit",
-      "sing"
-    ],
-    "interaction_count": 13
+    "name_clarity": 100,
+    "bond_level": 100,
+    "learned_tricks": [],
+    "interaction_count": 0
   },
   "stats": {
     "health": 100,
@@ -19,11 +15,11 @@
     "age_hours": 0
   },
   "player_memory": {
-    "file_corruption": 61.279001668824094,
+    "file_corruption": 0,
     "history_intact": true,
     "art_quality": 100
   },
-  "last_interaction": 1771159200.941501,
-  "last_commit": 1771134440.288373,
-  "last_save_time": 1771166362.281682
+  "last_interaction": 1771181300.880429,
+  "last_commit": 1771181300.8804321,
+  "last_save_time": 1771182248.561196
 }

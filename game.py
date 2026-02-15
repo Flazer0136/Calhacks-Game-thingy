@@ -25,18 +25,25 @@ class Game:
         self.message_timer = time.time() + 3
         self.pending_key = None
         
-        # ✨ Save terminal settings
+        # Save terminal settings
         if os.name == 'posix':
             self.fd = sys.stdin.fileno()
             self.old_settings = termios.tcgetattr(self.fd)
 
         self.view_mode = "stats"
         
-        # Load Pet
         if os.path.exists("pet_save.json"):
             self.pet = load_pet()
         else:
-            self.pet = load_pet(owner_name="Friend")
+            # First time setup - ask for names
+            console.print("\n[bold cyan] Welcome to DevGotchi![/]\n")
+            owner_name = input("What's your name? ").strip() or "Friend"
+            pet_name = input("What will you name your duck? ").strip() or "Buddy"
+            
+            self.pet = Pet(owner_name=owner_name, pet_name=pet_name)
+            console.print(f"\n[green] {pet_name} hatched! They'll remember you, {owner_name}...[/]")
+            console.print("[dim]Press any key to continue...[/]\n")
+            input()
             
         self._check_decay()
         
@@ -80,12 +87,10 @@ class Game:
             self.running = False
             self.listener.stop()
         elif command == "git_status":
-            # Switch to git view
-            self.view_mode = "git"
-            self.set_message("Showing Git Status", 2)
+            self.view_mode = "git_graph"
+            self.set_message("Showing Git Graph", 2)    
         
         elif command == "show_stats":
-            # Switch back to stats view
             self.view_mode = "stats"
             self.set_message("Showing Pet Stats", 2)
         
@@ -122,8 +127,8 @@ class Game:
         menu = Menu()
         frame_index = 0
         loop_count = 0
-        current_action = None  # ✨ Track what action is happening
-        action_timer = 0       # ✨ When action ends
+        current_action = None 
+        action_timer = 0       
         
         try:
             with Live(
@@ -136,9 +141,9 @@ class Game:
                 while self.running:
                     loop_count += 1
                     
-                    # Check if action animation finished
+        
                     if current_action and time.time() > action_timer:
-                        current_action = None  # ✨ Stop showing action, return to normal
+                        current_action = None
                     
                     # Animate when message showing OR action playing
                     if (time.time() < self.message_timer or current_action) and loop_count % 3 == 0:
@@ -149,8 +154,14 @@ class Game:
                         from git_tracker import get_commit_info, get_total_commits
                         git_info = get_commit_info() or {}
                         git_info['total'] = get_total_commits()
+                    elif self.view_mode == "git_graph":
+                        from git_tracker import get_commit_info, get_total_commits, get_git_graph
+                        git_info = get_commit_info() or {}
+                        git_info['total'] = get_total_commits()
+                        git_info['graph'] = get_git_graph(max_lines=6)  
+
                     
-                    # Handle key press
+
                     if self.pending_key:
                         key = self.pending_key
                         self.pending_key = None
@@ -168,7 +179,6 @@ class Game:
                             if action:
                                 self.handle_command(action)
                                 
-                                # ✨ Set action animation
                                 if action in ['dance', 'sit', 'sing', 'feed', 'play']:
                                     current_action = action
                                     action_timer = time.time() + 2.0  # 2 seconds

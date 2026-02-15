@@ -20,14 +20,11 @@ def get_last_commit_time():
             timestamp = int(result.stdout.strip())
             return datetime.fromtimestamp(timestamp)
         else:
-            # No commits yet
             return None
             
     except subprocess.CalledProcessError:
-        # Not a git repo or git not installed
         return None
     except FileNotFoundError:
-        # git command not found
         return None
 
 def hours_since_last_commit():
@@ -38,7 +35,6 @@ def hours_since_last_commit():
     last_commit = get_last_commit_time()
     
     if last_commit is None:
-        # No commits yet, return 0 (no decay)
         return 0.0
     
     now = datetime.now()
@@ -81,7 +77,7 @@ def get_commit_info():
     Returns: dict with message, author, date
     """
     try:
-        # Get commit message
+        # Commit message
         message_result = subprocess.run(
             ['git', 'log', '-1', '--format=%s'],
             capture_output=True,
@@ -89,7 +85,7 @@ def get_commit_info():
             check=True
         )
         
-        # Get author
+        # Author
         author_result = subprocess.run(
             ['git', 'log', '-1', '--format=%an'],
             capture_output=True,
@@ -97,7 +93,7 @@ def get_commit_info():
             check=True
         )
         
-        # Get date (human readable)
+        # Get date
         date_result = subprocess.run(
             ['git', 'log', '-1', '--format=%ar'],
             capture_output=True,
@@ -110,5 +106,26 @@ def get_commit_info():
             'author': author_result.stdout.strip(),
             'time_ago': date_result.stdout.strip()
         }
+    except:
+        return None
+
+
+def get_git_graph(max_lines=8):
+    """
+    Get ASCII art git commit graph.
+    Returns: string with graph or None
+    """
+    try:
+        result = subprocess.run(
+            ['git', 'log', '--graph', '--oneline', '--all', 
+             f'--max-count={max_lines}', '--color=never'],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=5
+        )
+        if result.stdout.strip():
+            return result.stdout.strip()
+        return None
     except:
         return None
