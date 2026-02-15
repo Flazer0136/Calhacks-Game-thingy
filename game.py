@@ -10,47 +10,48 @@ class Game:
     """Main game controller"""
     
     def __init__(self):
+        console.clear()
+    
         # Show git repo info
         if is_git_repo():
             repo_name = os.path.basename(os.getcwd())
-            console.print(f"[dim]Tracking commits in: {repo_name}[/]")
+            console.print(f"[dim]📁 Tracking commits in: {repo_name}[/]")
             
             commit_info = get_commit_info()
             if commit_info:
-                console.print(f"[dim]Last commit: {commit_info['message']} ({commit_info['time_ago']})[/]\n")
+                console.print(f"[dim]⏰ Last commit: {commit_info['message']} ({commit_info['time_ago']})[/]\n")
         else:
             console.print(f"[{COLORS['warning']}]⚠️  Not a git repo! Pet won't decay.[/]\n")
         
-        # Get owner name
-        owner_name = self.get_owner_name()
         
-        # ✨ NEW: Load existing pet or create new
-        self.pet = load_pet(owner_name=owner_name)
+        save_exists = os.path.exists("pet_save.json")
         
-        # ✨ NEW: Calculate decay since last session
+        if save_exists:
+            console.print(f"[{COLORS['info']}]💾 Loading your pet...[/]\n")
+            self.pet = load_pet()  
+            time.sleep(0.5)
+        else:
+            owner_name = self.get_owner_name()
+            self.pet = load_pet(owner_name=owner_name)  
+            
         hours_away = calculate_decay_since_last_save()
         
-        if hours_away > 0.1:  # More than 6 minutes
+        if hours_away > 0.1:  
             console.print(f"\n[{COLORS['warning']}]⏰ You've been away for {hours_away:.1f} hours...[/]")
             
-            # Check git commits during that time
             hours_no_commit = hours_since_last_commit()
             
             if hours_no_commit > hours_away:
-                # No commits since before you left
                 display_message(
                     f"💔 No commits for {hours_no_commit:.1f} hours! Pet's memory is fading...",
                     COLORS['danger']
                 )
-                # Apply decay for time away
                 self.pet.decay_memory(hours_passed=hours_away)
             else:
-                # You committed while away!
                 display_message(
                     f"✅ You made commits! Pet remembers you better!",
                     COLORS['success']
                 )
-                # Reward for committing
                 self.pet.pet_memory['name_clarity'] = min(100, self.pet.pet_memory['name_clarity'] + 10)
                 self.pet.pet_memory['bond_level'] = min(100, self.pet.pet_memory['bond_level'] + 5)
             
@@ -171,7 +172,6 @@ class Game:
             display_message("❓ Unknown command! Try: feed, play, dance, sit, sing, status, save, quit", COLORS['danger'])
             time.sleep(1)
         
-        # ✨ NEW: Auto-save after every command
         self.pet.last_interaction = time.time()
         save_pet(self.pet)
     
