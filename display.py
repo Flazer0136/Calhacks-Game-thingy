@@ -2,6 +2,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.layout import Layout
 from rich.text import Text
+from rich.markup import escape
 import random
 
 console = Console()
@@ -118,8 +119,10 @@ def display_pet(pet):
     )
     
     # Pet display with greeting
-    art = get_pet_art(pet)
-    greeting = f"\n[{COLORS['info']}]🦆 {pet.pet_name} greets:[/] [{COLORS['secondary']}]'{pet.get_display_name()}'[/]"
+    art = escape(get_pet_art(pet))
+    safe_pet_name = escape(pet.pet_name)
+    safe_display_name = escape(pet.get_display_name())
+    greeting = f"\n[{COLORS['info']}]🦆 {safe_pet_name} greets:[/] [{COLORS['secondary']}]'{safe_display_name}'[/]"
     
     layout["pet"].update(
         Panel(
@@ -148,8 +151,8 @@ def display_pet(pet):
 {create_progress_bar(100 - pet.player_memory['file_corruption'], color="bright_blue")}
     """
     
-    if corruption > 60:
-        stats_text = corrupt_text(stats_text, corruption)
+    # if corruption > 60:
+    #     stats_text = corrupt_text(stats_text, corruption)
     
     layout["stats"].update(
         Panel(
