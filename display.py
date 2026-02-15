@@ -1,25 +1,31 @@
-from rich.console import Console
+import time
+import random
+from rich.console import Console, Group  # <--- Added Group import
 from rich.panel import Panel
 from rich.layout import Layout
 from rich.text import Text
-from rich.markup import escape
-from rich.live import Live
-import random
-import time
+from rich.table import Table
+from rich.align import Align
+from rich import box
+from menu_system import MenuState
 
 console = Console()
 
-# Color scheme 
-COLORS = {
-    "primary": "bright_magenta",
-    "secondary": "bright_cyan", 
-    "success": "bright_green",
-    "warning": "bright_yellow",
-    "danger": "bright_red",
-    "info": "bright_blue"
+# --- THEME: "LIP GLOSS" (Deep Purple/Pink) ---
+THEME = {
+    "bg": "#1a1b26",           
+    "border": "#7aa2f7",       
+    "tab_active": "#f7768e",   
+    "tab_inactive": "#414868", 
+    "text_active": "#1a1b26",  
+    "text_normal": "#a9b1d6",  
+    "highlight": "#bb9af7",    
+    "success": "#9ece6a",      
+    "warning": "#e0af68",
+    "danger": "#f7768e"
 }
 
-# Base ASCII art 
+# --- YOUR ORIGINAL ART ---
 PET_ART = {
     "happy": [
         """
@@ -30,16 +36,6 @@ PET_ART = {
         """
    /\\_/\\  
   ( ^ω^ ) 
-   > ^ <
-        """,
-        """
-   /\\_/\\  
-  ( ^.^ ) 
-   >   <
-        """,
-        """
-   /\\_/\\  
-  ( ^.^ ) 
    > ^ <
         """
     ],
@@ -76,7 +72,6 @@ PET_ART = {
     ]
 }
 
-
 def corrupt_text(text, corruption_level):
     """Corrupt text based on corruption level (0-100)"""
     if corruption_level < 20:
@@ -92,169 +87,12 @@ def corrupt_text(text, corruption_level):
             corrupted += char
     return corrupted
 
-def create_progress_bar(value, max_value=100, color="bright_cyan"):
-    """Create a visual progress bar"""
-    filled = int((value / max_value) * 10)
-    empty = 10 - filled
-    bar = "█" * filled + "░" * empty
-    return f"[{color}]{bar}[/{color}] {int(value)}%"
-
-def get_pet_art(pet):
-    """Get ASCII art based on pet's bond level"""
-    bond = pet.pet_memory["bond_level"]
-    art_quality = pet.player_memory.get("art_quality", 100)
-    
-    # Choose art based on bond
-    if bond > 70:
-        art = PET_ART["happy"]
-    elif bond > 40:
-        art = PET_ART["neutral"]
-    elif bond > 10:
-        art = PET_ART["sad"]
-    else:
-        art = PET_ART["forgotten"]
-    
-    # Corrupt the art based on YOUR memory loss
-    corruption = pet.player_memory["file_corruption"]
-    if corruption > 30:
-        art = corrupt_text(art, corruption)
-    
-    return art
-
-def display_pet_live(pet, duration=None):
-    """
-    Display pet with Live updating (no scrollback)
-    duration: If None, shows static. If number, animates for that many seconds.
-    """
-    layout = create_main_layout(pet, frame_index=0)
-    
-    if duration is None:
-        # Static display - just show once
-        console.clear()
-        console.print(layout)
-    else:
-        # Animated display
-        with Live(layout, console=console, refresh_per_second=4, screen=False) as live:
-            frame_index = 0
-            start_time = time.time()
-            
-            while time.time() - start_time < duration:
-                frame_index += 1
-                layout = create_main_layout(pet, frame_index)
-                live.update(layout)
-                time.sleep(0.25)  # 4 FPS
-
-def create_main_layout(pet, frame_index=0):
-    """Create the full layout (we'll use this for Live updates)"""
-    layout = Layout()
-    
-    # Split into header, main, footer
-    layout.split_column(
-        Layout(name="header", size=3),
-        Layout(name="main", ratio=1),
-        Layout(name="footer", size=3)
-    )
-    
-    # Split main into pet and stats
-    layout["main"].split_row(
-        Layout(name="pet", ratio=2),
-        Layout(name="stats", ratio=1)
-    )
-    
-    # Header
-    corruption = pet.player_memory["file_corruption"]
-    if corruption > 60:
-        title_text = corrupt_text("═══ MEMORY PET ═══", corruption)
-        title_style = COLORS['danger']
-    else:
-        title_text = "═══ MEMORY PET ═══"
-        title_style = COLORS['primary']
-    
-    layout["header"].update(
-        Panel(
-            Text(title_text, style=f"bold {title_style}", justify="center"),
-            style=title_style
-        )
-    )
-    
-    # Pet display with animation frame
-    pet_art = get_pet_art(pet, frame_index)
-    greeting = f"\n🦆 {pet.pet_name} greets: '{pet.get_display_name()}'"
-    
-    layout["pet"].update(
-        Panel(
-            Text(pet_art + greeting, style=COLORS['info']),
-            title=f"[{COLORS['primary']}]Your Pet[/]",
-            border_style=COLORS['primary']
-        )
-    )
-    
-    # Stats panel
-    layout["stats"].update(create_stats_panel(pet))
-    
-    # Footer (actions)
-    actions = "feed | play | dance | sit | sing | status | save | quit"
-    layout["footer"].update(
-        Panel(
-            Text(actions, style=COLORS['secondary'], justify="center"),
-            title=f"[{COLORS['primary']}]Actions[/]",
-            style=COLORS['primary']
-        )
-    )
-    
-    return layout
-
-
-def create_stats_panel(pet):
-    """Create the stats panel with progress bars"""
-    from rich.table import Table
-    
-    table = Table.grid(padding=(0, 1))
-    table.add_column(style=COLORS['info'], width=18)
-    table.add_column()
-    
-    # Stats with progress bars
-    table.add_row(
-        "😊 Happiness",
-        create_progress_bar(pet.stats['happiness'])
-    )
-    table.add_row(
-        "💝 Bond Level",
-        create_progress_bar(pet.pet_memory['bond_level'])
-    )
-    table.add_row(
-        "🧠 Memory Clarity",
-        create_progress_bar(pet.pet_memory['name_clarity'])
-    )
-    table.add_row(
-        "📁 File Integrity",
-        create_progress_bar(100 - pet.player_memory['file_corruption'])
-    )
-    
-    # Add tricks if any
-    if pet.pet_memory['learned_tricks']:
-        tricks = ", ".join(pet.pet_memory['learned_tricks'])
-        table.add_row("", "")  # Spacer
-        table.add_row(
-            "✨ Tricks",
-            Text(tricks, style="dim")
-        )
-    
-    # Check for corruption
-    corruption = pet.player_memory['file_corruption']
-    
-    return Panel(
-        table,
-        title=f"[{COLORS['secondary']}]Status[/]",
-        border_style=COLORS['secondary']
-    )
-
 def get_pet_art(pet, frame_index=0):
-    """Get animated ASCII art frame"""
+    """Get ASCII art based on pet's bond level + Animation Frame"""
     bond = pet.pet_memory["bond_level"]
     corruption = pet.player_memory["file_corruption"]
-    
-    # Choose animation set based on state
+
+    # Choose state
     if corruption > 80:
         frames = PET_ART["forgotten"]
     elif bond > 70:
@@ -264,7 +102,7 @@ def get_pet_art(pet, frame_index=0):
     else:
         frames = PET_ART["sad"]
     
-    # Get current frame (cycle through)
+    # Cycle frames
     art = frames[frame_index % len(frames)]
     
     # Apply corruption
@@ -273,12 +111,109 @@ def get_pet_art(pet, frame_index=0):
     
     return art
 
+def create_game_layout(pet, menu, current_message="", frame_index=0):
+    """
+    Creates the 'Lip Gloss' style interface
+    """
+    layout = Layout()
+    layout.split_column(
+        Layout(name="top", ratio=2),
+        Layout(name="bottom", size=10)
+    )
 
-def display_message(message, style="white"):
-    """Show a message to the player"""
-    console.print(f"\n[{style}]{message}[/{style}]")
+    # --- TOP AREA: PET & STATS ---
+    # 1. Create the stats table
+    stats_table = Table.grid(expand=True, padding=(1, 2))
+    stats_table.add_column(justify="center", ratio=1)
+    stats_table.add_column(justify="center", ratio=1)
+    
+    def make_bar(val, color):
+        blocks = int(val / 10)
+        return f"[{color}]{'█' * blocks}[/][#24283b]{'█' * (10 - blocks)}[/]"
 
-def get_command():
-    """Get user input with nice formatting"""
-    console.print(f"\n[bold {COLORS['primary']}]Commands:[/] feed | play | status | quit")
-    return console.input(f"[bold {COLORS['secondary']}]>[/] ").strip().lower()
+    stats_table.add_row(
+        f"HAPPY {make_bar(pet.stats['happiness'], THEME['success'])}",
+        f"BOND {make_bar(pet.pet_memory['bond_level'], THEME['warning'])}"
+    )
+
+    # 2. Get Art
+    art_str = get_pet_art(pet, frame_index)
+    
+    # 3. Combine Art and Stats into a Group
+    # This renders them stacked vertically inside the panel
+    art_content = Align.center(
+        Text(f"\n{art_str}\n", style="bold white") + 
+        Text(f"\n{current_message}\n", style=f"bold {THEME['highlight']}")
+    )
+    
+    # Use Group to stack Art (top) and Stats (bottom)
+    main_content = Group(
+        art_content,
+        Align.center(stats_table)
+    )
+    
+    layout["top"].update(
+        Panel(
+            main_content,
+            border_style=THEME["border"],
+            box=box.ROUNDED,
+            padding=(1, 2)
+        )
+    )
+
+    # --- BOTTOM AREA: VERTICAL TABS ---
+    bottom_grid = Table.grid(expand=True)
+    bottom_grid.add_column(width=20) 
+    bottom_grid.add_column(ratio=1)  
+    
+    # Sidebar
+    sidebar_content = Table.grid(padding=(1, 1), expand=True)
+    
+    for i, item in enumerate(menu.main_items):
+        is_selected = (menu.state == MenuState.MAIN and i == menu.selected_index)
+
+        
+        if is_selected:
+            label = Text(f" {item.label.upper()} ", style=f"bold {THEME['text_active']} on {THEME['tab_active']}")
+            indicator = Text("● ", style=THEME['tab_active'])
+        else:
+            label = Text(f" {item.label.upper()} ", style=f"{THEME['text_normal']}")
+            indicator = Text("  ")
+            
+        sidebar_content.add_row(indicator + label)
+
+    # Content Panel
+    content_panel = None
+    
+    show_actions = False
+    if menu.state == MenuState.ACTIONS:
+        show_actions = True
+    elif menu.state == MenuState.MAIN and menu.main_items[menu.selected_index].label == "Actions":
+        show_actions = True
+
+    if show_actions:
+        action_table = Table.grid(padding=(0, 2))
+        for i, item in enumerate(menu.action_items):
+            if menu.state == MenuState.ACTIONS and i == menu.selected_index:
+                style = f"bold {THEME['highlight']}"
+                prefix = ">"
+            else:
+                style = "dim white"
+                prefix = " "
+            action_table.add_row(Text(f"{prefix} {item.label}", style=style))
+        content_panel = Panel(action_table, border_style=THEME["tab_inactive"], box=box.MINIMAL)
+        
+    elif menu.main_items[menu.selected_index].label == "Exit":
+        content_panel = Panel(
+            Align.center("[dim]Are you sure you want to leave?\nYour pet will miss you.[/]", vertical="middle"),
+            border_style=THEME["tab_inactive"],
+            box=box.MINIMAL
+        )
+
+    bottom_grid.add_row(
+        Panel(sidebar_content, border_style=THEME["border"], box=box.ROUNDED),
+        content_panel if content_panel else Panel("", box=box.MINIMAL)
+    )
+
+    layout["bottom"].update(bottom_grid)
+    return layout

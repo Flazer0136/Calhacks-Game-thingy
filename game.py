@@ -1,219 +1,158 @@
-from pet_system.pet_data import Pet
-from display import display_message, console, COLORS, create_main_layout, display_pet_live
-from git_tracker import is_git_repo, get_commit_info, hours_since_last_commit
-from save_system import save_pet, load_pet, calculate_decay_since_last_save
-from rich.live import Live
+import sys
 import time
 import os
+import tty
+import termios
+from rich.live import Live
+from rich.console import Console
+from pynput import keyboard
+
+# Local imports
+from pet_system.pet_data import Pet
+from display import console, create_game_layout
+from git_tracker import is_git_repo, hours_since_last_commit
+from save_system import save_pet, load_pet
+from menu_system import Menu, MenuState
 
 
 class Game:
-    """Main game controller"""
-    
     def __init__(self):
-        console.clear()
-    
-        # Show git repo info
-        if is_git_repo():
-            repo_name = os.path.basename(os.getcwd())
-            console.print(f"[dim]📁 Tracking commits in: {repo_name}[/]")
-            
-            commit_info = get_commit_info()
-            if commit_info:
-                console.print(f"[dim]⏰ Last commit: {commit_info['message']} ({commit_info['time_ago']})[/]\n")
-        else:
-            console.print(f"[{COLORS['warning']}]⚠️  Not a git repo! Pet won't decay.[/]\n")
-        
-        
-        save_exists = os.path.exists("pet_save.json")
-        
-        if save_exists:
-            console.print(f"[{COLORS['info']}]💾 Loading your pet...[/]\n")
-            self.pet = load_pet()  
-            time.sleep(0.5)
-        else:
-            owner_name = self.get_owner_name()
-            self.pet = load_pet(owner_name=owner_name)  
-            
-        # Show "away" message and check commits
-        hours_away = calculate_decay_since_last_save()
-
-        if save_exists:  
-            if hours_away > 0.1:
-                console.print(f"\n[{COLORS['warning']}]⏰ You've been away for {hours_away:.1f} hours...[/]")
-            
-            hours_no_commit = hours_since_last_commit()
-            
-            if hours_no_commit > hours_away:
-                if hours_away > 0.1: 
-                    display_message(
-                        f"💔 No commits for {hours_no_commit:.1f} hours! Pet's memory is fading...",
-                        COLORS['danger']
-                    )
-                    self.pet.decay_memory(hours_passed=hours_away)
-            else:
-                display_message(
-                    f"✅ You made commits! Pet remembers you better!",
-                    COLORS['success']
-                )
-                self.pet.pet_memory['name_clarity'] = min(100, self.pet.pet_memory['name_clarity'] + 10)
-                self.pet.pet_memory['bond_level'] = min(100, self.pet.pet_memory['bond_level'] + 5)
-                self.pet.player_memory['file_corruption'] = max(0, self.pet.player_memory['file_corruption'] - 10)
-            
-            if hours_away > 0.1:  
-                console.input(f"\n[dim]Press Enter to continue...[/]")
-            
         self.running = True
+        self.message = "Welcome back!"
+        self.message_timer = time.time() + 3
+        self.pending_key = None
+        
+        # ✨ Save terminal settings
+        self.fd = sys.stdin.fileno()
+        self.old_settings = termios.tcgetattr(self.fd)
+        
+        # Load Pet
+        if os.path.exists("pet_save.json"):
+            self.pet = load_pet()
+        else:
+            self.pet = load_pet(owner_name="Friend")
+            
+        self._check_decay()
+        
+        # Start keyboard listener
+        self.listener = keyboard.Listener(on_press=self._on_key_press)
+        self.listener.start()
 
+    def _check_decay(self):
+        if is_git_repo():
+             hours = hours_since_last_commit()
+             if hours > 24:
+                 self.set_message(f"⚠️ {hours:.0f}h since last commit!", 5)
+                 self.pet.decay_memory(hours)
+
+    def set_message(self, text, duration=2):
+        self.message = text
+        self.message_timer = time.time() + duration
     
-    def get_owner_name(self):
-        """Get player's name at start"""
-        console.clear()
-        console.print(f"[bold {COLORS['primary']}]╔═══ WELCOME TO MEMORY PET ═══╗[/]")
-        console.print("\n[cyan]Your pet's memory depends on your git commits![/]")
-        console.print("[dim]Commit code to keep your pet's memory alive.[/]\n")
-        name = console.input(f"[{COLORS['secondary']}]What's your name?[/] ").strip()
-        return name if name else "Friend"
-    
+    def _on_key_press(self, key):
+        """Callback from keyboard listener"""
+        try:
+            if key == keyboard.Key.up:
+                self.pending_key = 'UP'
+            elif key == keyboard.Key.down:
+                self.pending_key = 'DOWN'
+            elif key == keyboard.Key.right:
+                self.pending_key = 'RIGHT'
+            elif key == keyboard.Key.left:
+                self.pending_key = 'LEFT'
+            elif key == keyboard.Key.enter:
+                self.pending_key = 'ENTER'
+            elif hasattr(key, 'char'):
+                if key.char == 'q':
+                    self.pending_key = 'q'
+        except:
+            pass
+
     def handle_command(self, command):
-        """Process user commands and update pet state"""
-        
-        if command == "quit" or command == "exit":
+        if command == "quit":
+            save_pet(self.pet)
             self.running = False
-            
-            # ✨ NEW: Save before quitting
-            display_message("💾 Saving pet...", COLORS['info'])
-            if save_pet(self.pet):
-                display_message("✅ Pet saved successfully!", COLORS['success'])
-            
-            # ✨ NEW: Reminder about commits
-            hours_no_commit = hours_since_last_commit()
-            if hours_no_commit > 12:
-                display_message(
-                    f"⚠️  Warning: {hours_no_commit:.0f}h since last commit! Make a commit soon!",
-                    COLORS['warning']
-                )
-            
-            display_message("👋 Goodbye! Come back soon (and commit code)!", COLORS['primary'])
-            return
-        
+            self.listener.stop()
         elif command == "feed":
             self.pet.stats['happiness'] = min(100, self.pet.stats['happiness'] + 15)
-            self.pet.stats['health'] = min(100, self.pet.stats['health'] + 10)
-            self.pet.stats['hunger'] = max(0, self.pet.stats['hunger'] - 20)
-            self.pet.pet_memory['interaction_count'] += 1
-            
-            self.pet.pet_memory['name_clarity'] = min(100, self.pet.pet_memory['name_clarity'] + 2)
-            self.pet.pet_memory['bond_level'] = min(100, self.pet.pet_memory['bond_level'] + 3)
-            
-            display_message(f"🍖 {self.pet.pet_name} is eating... nom nom! Health restored!", COLORS['success'])
-            time.sleep(1.5)
-        
+            self.set_message("🍖 Yummy!", 1.5)
         elif command == "play":
-            self.pet.stats['happiness'] = min(100, self.pet.stats['happiness'] + 20)
             self.pet.pet_memory['bond_level'] = min(100, self.pet.pet_memory['bond_level'] + 5)
-            self.pet.pet_memory['interaction_count'] += 1
-            self.pet.pet_memory['name_clarity'] = min(100, self.pet.pet_memory['name_clarity'] + 3)
-            
-            display_message(f"🎾 {self.pet.pet_name} is playing! So much fun!", COLORS['success'])
-            time.sleep(1.5)
-        
+            self.set_message("🎾 So fun!", 1.5)
         elif command == "dance":
-            if 'dance' not in self.pet.pet_memory['learned_tricks']:
-                self.pet.pet_memory['learned_tricks'].append('dance')
-                display_message(f"✨ {self.pet.pet_name} learned to dance!", COLORS['info'])
-            else:
-                display_message(f"💃 {self.pet.pet_name} dances gracefully!", COLORS['success'])
-            
-            self.pet.stats['happiness'] = min(100, self.pet.stats['happiness'] + 10)
-            self.pet.pet_memory['bond_level'] = min(100, self.pet.pet_memory['bond_level'] + 4)
-            self.pet.pet_memory['interaction_count'] += 1
-            time.sleep(1.5)
-        
+            self.set_message("💃 Dancing!", 1.5)
         elif command == "sit":
-            if 'sit' not in self.pet.pet_memory['learned_tricks']:
-                self.pet.pet_memory['learned_tricks'].append('sit')
-                display_message(f"✨ {self.pet.pet_name} learned to sit!", COLORS['info'])
-            else:
-                display_message(f"🪑 {self.pet.pet_name} sits down obediently!", COLORS['success'])
-            
-            self.pet.pet_memory['interaction_count'] += 1
-            time.sleep(1.5)
-        
+            self.set_message("🪑 Sitting!", 1.5)
         elif command == "sing":
-            if 'sing' not in self.pet.pet_memory['learned_tricks']:
-                self.pet.pet_memory['learned_tricks'].append('sing')
-                display_message(f"✨ {self.pet.pet_name} learned to sing!", COLORS['info'])
-            else:
-                display_message(f"🎵 {self.pet.pet_name} sings a beautiful song! ♪♫", COLORS['success'])
-            
-            self.pet.stats['happiness'] = min(100, self.pet.stats['happiness'] + 15)
-            self.pet.pet_memory['interaction_count'] += 1
-            time.sleep(1.5)
-        
-        elif command == "status":
-            # ✨ NEW: Show commit info in status
-            tricks = ", ".join(self.pet.pet_memory['learned_tricks']) if self.pet.pet_memory['learned_tricks'] else "None yet"
-            hours_no_commit = hours_since_last_commit()
-            
-            display_message(
-                f"📊 Interactions: {self.pet.pet_memory['interaction_count']} | Tricks: {tricks}\n"
-                f"⏰ Hours since commit: {hours_no_commit:.1f}",
-                COLORS['info']
-            )
-            time.sleep(2)
-        
-        elif command == "save":
-            # ✨ NEW: Manual save command
-            display_message("💾 Saving...", COLORS['info'])
-            if save_pet(self.pet):
-                display_message("✅ Saved!", COLORS['success'])
-            time.sleep(1)
-        
-        elif command == "decay":
-            display_message("⏱️  Simulating 10 hours of decay...", COLORS['warning'])
-            self.pet.decay_memory(hours_passed=10)
-            time.sleep(1)
-        
-        else:
-            display_message("❓ Unknown command! Try: feed, play, dance, sit, sing, status, save, quit", COLORS['danger'])
-            time.sleep(1)
-        
-        self.pet.last_interaction = time.time()
-        save_pet(self.pet)
+            self.set_message("🎵 Singing!", 1.5)
     
-    def run(self):
-        """Main game loop with Live display"""
-        frame_index = 0
-        
-        while self.running:
-            # Create layout
-            layout = create_main_layout(self.pet, frame_index)
-            
-            # Show with Live (redraws in place)
-            with Live(layout, console=console, refresh_per_second=1, screen=False) as live:
-                # Show animated pet for 2 seconds
-                for i in range(8):  # 8 frames = 2 seconds at 4 FPS
-                    frame_index += 1
-                    layout = create_main_layout(self.pet, frame_index)
-                    live.update(layout)
-                    time.sleep(0.25)
-                
-                # Stop animation, get input
-                live.stop()
-            
-            # Show command prompt (outside Live context)
-            command = console.input(f"\n[bold {COLORS['secondary']}]>[/] ").strip().lower()
-            
-            # Handle the command
-            self.handle_command(command)
-            
-            # Brief animation after action
-            if command in ['feed', 'play', 'dance', 'sit', 'sing']:
-                display_pet_live(self.pet, duration=1.5)  # 1.5 sec celebration animation
+    def cleanup(self):
+        """Restore terminal to normal state"""
+        self.listener.stop()
+        termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old_settings)
 
+    def run(self):
+        # ✨ Put terminal in raw mode (no echo)
+        tty.setcbreak(self.fd)
+        
+        console.clear()
+        menu = Menu()
+        frame_index = 0
+        loop_count = 0
+        
+        try:
+            with Live(
+                create_game_layout(self.pet, menu, self.message, 0),
+                auto_refresh=False,
+                console=console,
+                screen=False,
+                refresh_per_second=20
+            ) as live:
+                while self.running:
+                    loop_count += 1
+                    
+                    # Animate when message showing
+                    if time.time() < self.message_timer and loop_count % 3 == 0:
+                        frame_index = (frame_index + 1) % 4
+                    
+                    # Handle key press
+                    if self.pending_key:
+                        key = self.pending_key
+                        self.pending_key = None
+                        
+                        if key == 'UP':
+                            menu.navigate_up()
+                        elif key == 'DOWN':
+                            menu.navigate_down()
+                        elif key == 'RIGHT':
+                            menu.navigate_right()
+                        elif key == 'LEFT':
+                            menu.navigate_left()
+                        elif key == 'ENTER':
+                            action = menu.select()
+                            if action:
+                                self.handle_command(action)
+                        elif key == 'q':
+                            self.handle_command('quit')
+                    
+                    # Update display
+                    msg = self.message if time.time() < self.message_timer else ""
+                    live.update(
+                        create_game_layout(self.pet, menu, msg, frame_index),
+                        refresh=True
+                    )
+                    
+                    time.sleep(0.05)
+        
+        finally:
+            # ✨ Always restore terminal on exit
+            self.cleanup()
 
 
 if __name__ == "__main__":
     game = Game()
-    game.run()
+    try:
+        game.run()
+    except KeyboardInterrupt:
+        game.cleanup()
+        print("\nGoodbye!")
