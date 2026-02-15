@@ -1,0 +1,25 @@
+{
+  "pet_name": "Buddy",
+  "creation_time": 1771134440.288357,
+  "pet_memory": {
+    "owner_name": "Avi",
+    "name_clarity": 100,
+    "bond_level": 100,
+    "learned_tricks": [],
+    "interaction_count": 0
+  },
+  "stats": {
+    "health": 100,
+    "happiness": 100,
+    "hunger": 0,
+    "age_hours": 0
+  },
+  "player_memory": {
+    "file_corruption": 0,
+    "history_intact": true,
+    "art_quality": 100
+  },
+  "last_interaction": 1771134440.28837,
+  "last_commit": 1771134440.288373,
+  "last_save_time": 1771134479.2481642
+}
