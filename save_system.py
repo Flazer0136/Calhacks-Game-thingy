@@ -6,7 +6,7 @@ import time
 SAVE_FILE = "pet_save.json"
 
 def save_pet(pet):
-    """Save pet state to JSON file"""
+    # Save pet state to JSON file
     save_data = {
         # Pet identity
         "pet_name": pet.pet_name,
@@ -36,10 +36,7 @@ def save_pet(pet):
         return False
 
 def load_pet(owner_name="Friend", pet_name="Buddy"):
-    """
-    Load pet from save file or create new one.
-    Returns: Pet object
-    """
+    # Load pet from save file or create new one.
     from pet_system.pet_data import Pet
     
     # Check if save exists
@@ -69,10 +66,7 @@ def load_pet(owner_name="Friend", pet_name="Buddy"):
         return Pet(owner_name=owner_name, pet_name=pet_name)
 
 def calculate_decay_since_last_save():
-    """
-    Calculate how many hours passed since last save.
-    Returns: float (hours)
-    """
+    # Calculate how many hours passed since last save.
     if not os.path.exists(SAVE_FILE):
         return 0.0
     
@@ -89,7 +83,7 @@ def calculate_decay_since_last_save():
         return 0.0
 
 def delete_save():
-    """Delete save file (for testing or pet death)"""
+    # Delete save file (for testing or pet death)
     if os.path.exists(SAVE_FILE):
         os.remove(SAVE_FILE)
         return True

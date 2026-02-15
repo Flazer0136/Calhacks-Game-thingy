@@ -3,10 +3,7 @@ from datetime import datetime
 import os
 
 def get_last_commit_time():
-    """
-    Get timestamp of last git commit in current repo.
-    Returns: datetime object or None if no commits/not a repo
-    """
+    # Get timestamp of last git commit in current repo.
     try:
         # Get latest Git commits 
         result = subprocess.run(
@@ -28,10 +25,7 @@ def get_last_commit_time():
         return None
 
 def hours_since_last_commit():
-    """
-    Calculate hours since last commit.
-    Returns: float (hours) or 0 if no commits/errors
-    """
+    # Calculate hours since last commit.
     last_commit = get_last_commit_time()
     
     if last_commit is None:
@@ -44,10 +38,7 @@ def hours_since_last_commit():
     return max(0, hours)  # Never negative
 
 def get_total_commits():
-    """
-    Get total number of commits in repo.
-    Returns: int (commit count)
-    """
+    # Get total number of commits in repo.
     try:
         result = subprocess.run(
             ['git', 'rev-list', '--count', 'HEAD'],
@@ -60,7 +51,7 @@ def get_total_commits():
         return 0
 
 def is_git_repo():
-    """Check if current directory is a git repository"""
+    # Check if current directory is a git repository
     try:
         subprocess.run(
             ['git', 'rev-parse', '--git-dir'],
@@ -72,10 +63,7 @@ def is_git_repo():
         return False
 
 def get_commit_info():
-    """
-    Get detailed info about last commit.
-    Returns: dict with message, author, date
-    """
+    # Get detailed info about last commit.
     try:
         # Commit message
         message_result = subprocess.run(
@@ -111,10 +99,7 @@ def get_commit_info():
 
 
 def get_git_graph(max_lines=8):
-    """
-    Get ASCII art git commit graph.
-    Returns: string with graph or None
-    """
+    # Get ASCII art git commit graph.
     try:
         result = subprocess.run(
             ['git', 'log', '--graph', '--oneline', '--all', 

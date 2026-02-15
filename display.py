@@ -37,7 +37,6 @@ def load_sprite_frames(filename):
     """
     Load sprite frames from a text file.
     If file has multiple frames, they're separated by blank lines.
-    Returns list of frames.
     """
     try:
         path = f"pet_sprites/{filename}"
@@ -81,7 +80,7 @@ PET_SPRITES = {
 
 
 def corrupt_text(text, corruption_level):
-    """Corrupt text based on corruption level (0-100)"""
+    # Corrupt text based on corruption level (0-100)
     if corruption_level < 20:
         return text
     
@@ -97,7 +96,7 @@ def corrupt_text(text, corruption_level):
 
 
 def get_pet_art(pet, frame_index=0, current_action=None):
-    """Get sprite based on pet state or current action."""
+    # Get sprite based on pet state or current action.
     
     if current_action:
         action_key = current_action.lower()
@@ -144,7 +143,7 @@ def get_pet_art(pet, frame_index=0, current_action=None):
 
 # Simple stat bar 
 def create_stat_bar(value: int, width: int = 15, filled: str = "█", empty: str = "░") -> str:
-    """Create a visual stat bar."""
+    # Create a visual stat bar.
     value = max(0, min(100, int(value)))
     filled_count = int(value / 100 * width)
     empty_count = width - filled_count
@@ -153,7 +152,7 @@ def create_stat_bar(value: int, width: int = 15, filled: str = "█", empty: str
 
 # Horizontal stat bars
 def create_stats_panel(pet):
-    """Create Happy Index panel with horizontal bars"""
+    # Create Happy Index panel with horizontal bars
     stats_grid = Table.grid(expand=True, padding=(1, 2))
     stats_grid.add_column(width=12, justify="left")  # Emoji + Label
     stats_grid.add_column(ratio=1)                    # Bar
@@ -178,11 +177,10 @@ def create_stats_panel(pet):
 
 
 def create_git_panel(git_info):
-    """Create Git Index panel showing commit graph + info"""
+    # Create Git Index panel showing commit graph + info
     git_table = Table.grid(expand=True, padding=(0, 1))
     git_table.add_column(justify="left")
     
-    # GRAPH FIRST (if available) - YELLOW/GOLD THEME
     if git_info.get('graph'):
         git_table.add_row(Text("📈 Commit Graph", style=f"bold {THEME['warning']}"))  # Yellow title
         git_table.add_row(Text(""))
@@ -220,7 +218,7 @@ def create_git_panel(git_info):
 
 
 def create_git_graph_panel(graph_text):
-    """Create Git Graph panel showing commit tree"""
+    # Create Git Graph panel showing commit tree
     git_table = Table.grid(expand=True, padding=(1, 1))
     git_table.add_column(justify="left")
     
@@ -238,12 +236,12 @@ def create_git_graph_panel(graph_text):
 
 # Helper to create dividers
 def create_horizontal_divider():
-    """Create a full-width horizontal divider line"""
+    # Create a full-width horizontal divider line
     return Rule(style=THEME['divider'])
 
 
 def create_game_layout(pet, menu, current_message="", frame_index=0, current_action=None, view_mode="stats", git_info=None):
-    """✨ UPDATED: Single box layout with internal dividers"""
+    # Single box layout with internal dividers
     
     # === TOP SECTION: Pet (left) | Stats (right) ===
     top_section = Table.grid(expand=True, padding=(1, 1))

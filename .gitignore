@@ -2,7 +2,9 @@ pet_save.json
 
 .venv/
 
-__pycache__/
+**/__pycache__/
+
+pet_save.json
 
 venv/
 env/
