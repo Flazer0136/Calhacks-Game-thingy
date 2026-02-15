@@ -25,6 +25,8 @@ class Game:
         # ✨ Save terminal settings
         self.fd = sys.stdin.fileno()
         self.old_settings = termios.tcgetattr(self.fd)
+
+        self.view_mode = "stats"
         
         # Load Pet
         if os.path.exists("pet_save.json"):
@@ -73,6 +75,20 @@ class Game:
             save_pet(self.pet)
             self.running = False
             self.listener.stop()
+        elif command == "git_status":
+            # Switch to git view
+            self.view_mode = "git"
+            self.set_message("Showing Git Status", 2)
+        
+        elif command == "show_stats":
+            # Switch back to stats view
+            self.view_mode = "stats"
+            self.set_message("Showing Pet Stats", 2)
+        
+        elif command == "decay":
+            self.set_message("⏱️  Simulating decay...", 2)
+            self.pet.decay_memory(hours_passed=10)
+
         elif command == "feed":
             self.pet.stats['happiness'] = min(100, self.pet.stats['happiness'] + 15)
             self.set_message("🍖 Yummy!", 1.5)
@@ -119,6 +135,12 @@ class Game:
                     # Animate when message showing OR action playing
                     if (time.time() < self.message_timer or current_action) and loop_count % 3 == 0:
                         frame_index = (frame_index + 1) % 100
+
+                    git_info = None
+                    if self.view_mode == "git":
+                        from git_tracker import get_commit_info, get_total_commits
+                        git_info = get_commit_info() or {}
+                        git_info['total'] = get_total_commits()
                     
                     # Handle key press
                     if self.pending_key:
@@ -149,7 +171,7 @@ class Game:
                     # Update display
                     msg = self.message if time.time() < self.message_timer else ""
                     live.update(
-                        create_game_layout(self.pet, menu, msg, frame_index, current_action),  # ✨ Pass action
+                        create_game_layout(self.pet, menu, msg, frame_index, current_action, self.view_mode, git_info),
                         refresh=True
                     )
                     

@@ -6,6 +6,7 @@ import termios
 class MenuState(Enum):
     MAIN = "main"
     ACTIONS = "actions"
+    SETTINGS = "settings"
 
 class MenuItem:
     def __init__(self, label, action=None, submenu=None):
@@ -21,6 +22,7 @@ class Menu:
         # Main Menu
         self.main_items = [
             MenuItem("Actions", submenu="actions"),
+            MenuItem("Settings", submenu="settings"), 
             MenuItem("Exit", action="quit")
         ]
         
@@ -31,7 +33,11 @@ class Menu:
             MenuItem("Sing", action="sing"),
             MenuItem("Feed", action="feed"),
             MenuItem("Play", action="play"),
-            # We don't need "Back" anymore if we have Left Arrow support!
+        ]
+        self.settings_items = [
+            MenuItem("Git Status", action="git_status"),
+            MenuItem("Manual Decay", action="decay"),
+            MenuItem("Show Stats", action="show_stats"),
         ]
     
     def get_current_items(self):
@@ -39,7 +45,10 @@ class Menu:
             return self.main_items
         elif self.state == MenuState.ACTIONS:
             return self.action_items
+        elif self.state == MenuState.SETTINGS:  # ✨ Add this
+            return self.settings_items
         return []
+
     
     def navigate_up(self):
         items = self.get_current_items()
@@ -49,44 +58,50 @@ class Menu:
         items = self.get_current_items()
         self.selected_index = (self.selected_index + 1) % len(items)
 
-    # --- NEW: TAB NAVIGATION ---
-    def navigate_right(self):
-        """Enter the tab if the selected item has a submenu"""
-        items = self.get_current_items()
-        selected = items[self.selected_index]
-        
-        if selected.submenu == "actions":
-            self.state = MenuState.ACTIONS
-            self.selected_index = 0 # Start at top of action list
 
     def navigate_left(self):
         """Go back to the sidebar"""
         if self.state == MenuState.ACTIONS:
             self.state = MenuState.MAIN
-            self.selected_index = 0 # Highlight 'Actions' again
+            self.selected_index = 0  
+        elif self.state == MenuState.SETTINGS: 
+            self.state = MenuState.MAIN
+            self.selected_index = 1 
+
+
+    def navigate_right(self):
+        """Enter the tab if selected item has submenu"""
+        items = self.get_current_items()
+        selected = items[self.selected_index]
+        
+        if selected.submenu == "actions":
+            self.state = MenuState.ACTIONS
+            self.selected_index = 0
+        elif selected.submenu == "settings":  # ✨ Add this
+            self.state = MenuState.SETTINGS
+            self.selected_index = 0
 
     def select(self):
         """Handle Enter key"""
         items = self.get_current_items()
         selected = items[self.selected_index]
         
-        # Also allow Enter to open tabs (just like Right Arrow)
+        # Open submenus
         if selected.submenu == "actions":
             self.state = MenuState.ACTIONS
             self.selected_index = 0
             return None
-        elif selected.action == "back":
-            self.state = MenuState.MAIN
+        elif selected.submenu == "settings":  # ✨ Add this
+            self.state = MenuState.SETTINGS
             self.selected_index = 0
             return None
         else:
             return selected.action
 
-    # ... (Keep get_key function and is_actions_open unchanged) ...
+
     def is_actions_open(self):
         return self.state == MenuState.ACTIONS
 
-# (Keep your existing get_key function down here)
 def get_key():
     # ... paste your existing get_key code here ...
     fd = sys.stdin.fileno()
